@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CRM · Gestión de Clientes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="crm-supabase.js"></script>
+<style>
+  :root{
+    --petrol-900:#0E3B43;
+    --petrol-700:#155A64;
+    --petrol-500:#1C7480;
+    --ochre-500:#C98A3B;
+    --ochre-600:#B07429;
+    --bg:#EEF2F2;
+    --surface:#FFFFFF;
+    --surface-2:#F6F8F8;
+    --line:#DEE5E5;
+    --ink:#1B2A2D;
+    --ink-soft:#5C6E71;
+    --ink-faint:#94A3A4;
+    --good:#2E7D5B;
+    --good-bg:#E3F3EA;
+    --warn:#B07429;
+    --warn-bg:#FBF0DF;
+    --bad:#B23A48;
+    --bad-bg:#FAE6E8;
+    --radius:14px;
+    --radius-sm:9px;
+    --shadow:0 1px 2px rgba(14,59,67,.06), 0 8px 24px -12px rgba(14,59,67,.18);
+    --font-display:'Space Grotesk', 'Inter', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  button, input, select, textarea{font-family:inherit;font-size:inherit;color:inherit;}
+  button{cursor:pointer;}
+  ::selection{background:var(--ochre-500);color:#fff;}
+
+  *:focus-visible{outline:2.5px solid var(--ochre-500);outline-offset:2px;border-radius:4px;}
+
+  .app{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;margin-bottom:18px;
+  }
+  .topbar .brand .eyebrow{
+    font-family:var(--font-mono);font-size:11.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--petrol-500);font-weight:600;
+    display:flex;align-items:center;gap:8px;margin-bottom:6px;
+  }
+  .topbar .brand .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--ochre-500);}
+  .topbar h1{
+    font-family:var(--font-display);font-size:28px;font-weight:700;
+    margin:0;color:var(--petrol-900);letter-spacing:-.01em;
+  }
+  .topbar p{margin:6px 0 0;color:var(--ink-soft);font-size:14px;}
+  .topbar .actions{display:flex;gap:10px;align-items:center;}
+
+  .conn-status{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    color:var(--ink-soft);padding:7px 11px;border-radius:99px;background:var(--surface-2);
+    border:1px solid var(--line);
+  }
+  .conn-status .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);}
+  .conn-status.ok .dot{background:var(--good);}
+  .conn-status.ok{color:var(--good);}
+  .conn-status.error .dot{background:var(--bad);}
+  .conn-status.error{color:var(--bad);}
+  .conn-status.loading .dot{background:var(--ochre-500);animation:pulse 1.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    border-radius:10px;border:1px solid transparent;
+    padding:10px 16px;font-weight:600;font-size:13.5px;
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+    white-space:nowrap;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--petrol-900);color:#fff;}
+  .btn-primary:hover{background:var(--petrol-700);}
+  .btn-ghost{background:var(--surface);color:var(--petrol-900);border-color:var(--line);}
+  .btn-ghost:hover{background:var(--surface-2);}
+  .btn-danger{background:var(--bad);color:#fff;}
+  .btn-danger:hover{background:#9c2f3c;}
+  .btn-sm{padding:7px 12px;font-size:12.5px;border-radius:8px;}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+
+  /* ---------- Banner ---------- */
+  .banner{
+    display:flex;align-items:flex-start;gap:12px;
+    border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;
+    font-size:13.5px;line-height:1.5;border:1px solid;
+  }
+  .banner.warn{background:var(--warn-bg);border-color:#eccd9e;color:#7a5320;}
+  .banner.bad{background:var(--bad-bg);border-color:#edb7bd;color:#7c2630;}
+  .banner .glyph{font-size:17px;line-height:1;flex:none;margin-top:1px;}
+  .banner b{display:block;margin-bottom:2px;}
+  .banner code{
+    background:rgba(0,0,0,.07);padding:1px 5px;border-radius:5px;font-family:var(--font-mono);font-size:12px;
+  }
+  .banner .banner-actions{margin-top:8px;display:flex;gap:8px;}
+
+  /* ---------- KPIs ---------- */
+  .kpis{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;
+  }
+  .kpi{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 18px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+  }
+  .kpi::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--petrol-500);
+  }
+  .kpi.accent::before{background:var(--ochre-500);}
+  .kpi .label{
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-faint);font-weight:600;margin-bottom:8px;
+  }
+  .kpi .value{
+    font-family:var(--font-display);font-size:25px;font-weight:700;color:var(--petrol-900);
+    font-variant-numeric:tabular-nums;
+  }
+  .kpi .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow);
+  }
+  .search-wrap{position:relative;flex:1 1 220px;min-width:180px;}
+  .search-wrap input{
+    width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:9px;
+    background:var(--surface-2);
+  }
+  .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-faint);}
+  .toolbar select{
+    border:1px solid var(--line);background:var(--surface-2);border-radius:9px;
+    padding:9px 10px;min-width:140px;color:var(--ink);
+  }
+  .toolbar .spacer{flex:1;}
+  .toolbar .count{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;padding:0 4px;}
+
+  /* ---------- Table ---------- */
+  .table-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;box-shadow:var(--shadow);
+  }
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:980px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--ink-soft);font-weight:600;padding:12px 14px;
+    background:var(--surface-2);border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{color:var(--petrol-900);}
+  thead th .arrow{font-size:10px;margin-left:3px;opacity:.6;}
+  tbody td{
+    padding:13px 14px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle;
+  }
+  tbody tr{transition:background .12s ease;}
+  tbody tr:hover{background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.state-Activo{box-shadow:inset 3px 0 0 var(--good);}
+  tbody tr.state-En-seguimiento{box-shadow:inset 3px 0 0 var(--warn);}
+  tbody tr.state-Inactivo{box-shadow:inset 3px 0 0 var(--bad);}
+
+  .id-pill{
+    font-family:var(--font-mono);font-size:11.5px;background:var(--surface-2);
+    border:1px solid var(--line);padding:3px 7px;border-radius:6px;color:var(--petrol-700);
+  }
+  .cell-name{font-weight:600;color:var(--ink);}
+  .cell-sub{font-size:12px;color:var(--ink-soft);}
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+    padding:4px 9px;border-radius:99px;
+  }
+  .badge .dot{width:6px;height:6px;border-radius:50%;}
+  .badge.Activo{background:var(--good-bg);color:var(--good);}
+  .badge.Activo .dot{background:var(--good);}
+  .badge.En-seguimiento{background:var(--warn-bg);color:var(--warn);}
+  .badge.En-seguimiento .dot{background:var(--warn);}
+  .badge.Inactivo{background:var(--bad-bg);color:var(--bad);}
+  .badge.Inactivo .dot{background:var(--bad);}
+
+  .amount{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;}
+  .icon-btn{
+    width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    transition:background .12s ease,color .12s ease,border-color .12s ease;
+  }
+  .icon-btn:hover{background:var(--surface-2);color:var(--petrol-900);}
+  .icon-btn.whatsapp:hover{color:#1f9e58;border-color:#bfe6cf;background:#eafaf1;}
+  .icon-btn.danger:hover{color:var(--bad);border-color:#f0c3c8;background:var(--bad-bg);}
+
+  .empty-state{padding:60px 20px;text-align:center;color:var(--ink-soft);}
+  .empty-state .glyph{font-size:32px;margin-bottom:10px;}
+  .empty-state h3{font-family:var(--font-display);color:var(--petrol-900);margin:0 0 6px;font-size:17px;}
+  .empty-state p{margin:0 0 16px;font-size:13.5px;}
+
+  .loading{padding:60px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+  .spinner{
+    width:22px;height:22px;border-radius:50%;border:2.5px solid var(--line);
+    border-top-color:var(--petrol-500);margin:0 auto 12px;animation:spin .8s linear infinite;
+  }
+  .spinner.sm{width:14px;height:14px;border-width:2px;margin:0;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(14,30,33,.45);backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;
+    opacity:0;pointer-events:none;transition:opacity .15s ease;
+  }
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .modal{
+    background:var(--surface);border-radius:16px;max-width:560px;width:100%;
+    max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px -16px rgba(14,30,33,.35);
+    transform:translateY(8px) scale(.98);transition:transform .15s ease;
+  }
+  .overlay.open .modal{transform:translateY(0) scale(1);}
+  .modal.small{max-width:420px;}
+  .modal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);
+  }
+  .modal-head h2{font-family:var(--font-display);font-size:18px;margin:0;color:var(--petrol-900);}
+  .modal-close{
+    width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);
+  }
+  .modal-close:hover{background:var(--surface-2);}
+  .modal-body{padding:20px 22px;}
+  .modal-foot{
+    padding:16px 22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;
+    position:sticky;bottom:0;background:var(--surface);
+  }
+  .modal-foot .foot-right{display:flex;gap:10px;}
+  .form-error{font-size:12.5px;color:var(--bad);}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+  .field label .opt{font-weight:400;color:var(--ink-faint);}
+  .field input, .field select, .field textarea{
+    border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--surface-2);
+    width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    background:var(--surface);border-color:var(--petrol-500);
+  }
+  .field textarea{resize:vertical;min-height:64px;}
+  .field .hint{font-size:11.5px;color:var(--ink-faint);}
+  .field.error input, .field.error select{border-color:var(--bad);}
+  .field .err-msg{font-size:11.5px;color:var(--bad);display:none;}
+  .field.error .err-msg{display:block;}
+  .age-readout{
+    font-family:var(--font-mono);font-size:12.5px;color:var(--petrol-700);
+    background:var(--surface-2);border:1px dashed var(--line);border-radius:9px;
+    padding:8px 11px;margin-top:2px;
+  }
+
+  .confirm-text{font-size:14px;color:var(--ink-soft);line-height:1.5;}
+  .confirm-text b{color:var(--ink);}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--petrol-900);color:#fff;padding:11px 18px;border-radius:10px;
+    font-size:13px;font-weight:500;box-shadow:0 12px 30px -8px rgba(14,30,33,.45);
+    opacity:0;pointer-events:none;transition:all .25s ease;z-index:100;display:flex;align-items:center;gap:8px;
+    max-width:80vw;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .dot{width:7px;height:7px;border-radius:50%;background:var(--ochre-500);flex:none;}
+  .toast.error .dot{background:#ff8a93;}
+
+  footer.note{
+    text-align:center;color:var(--ink-faint);font-size:11.5px;margin-top:26px;line-height:1.6;
+  }
+  footer.note code{font-family:var(--font-mono);background:var(--surface-2);padding:1px 5px;border-radius:5px;}
+
+  .icon-btn.purchases:hover{color:var(--petrol-500);border-color:#bfd8dd;background:#e8f1f3;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+
+  @media (max-width: 760px){
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .form-grid{grid-template-columns:1fr;}
+    .topbar{align-items:flex-start;}
+    .app{padding:20px 14px 60px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="eyebrow"><span class="dot"></span>CRM · Villa del Rosario</div>
+      <h1>Gestión de clientes</h1>
+      <p>Cada contacto, su historial y su próximo paso, en un mismo lugar.</p>
+    </div>
+    <div class="actions">
+      <span class="conn-status loading" id="connStatus"><span class="dot"></span><span id="connStatusText">Conectando…</span></span>
+      <button class="btn btn-ghost" id="btnWeeklyReport" type="button">📊 Resumen Semanal</button>
+      <button class="btn btn-ghost" id="btnExport" type="button">Exportar CSV</button>
+      <button class="btn btn-primary" id="btnNew" type="button">+ Nuevo cliente</button>
+    </div>
+  </header>
+
+  <div id="bannerArea"></div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por nombre, email o teléfono…" />
+    </div>
+    <select id="filterLocalidad"><option value="">Todas las localidades</option></select>
+    <select id="filterCanal"><option value="">Todos los canales</option></select>
+    <select id="filterEstado">
+      <option value="">Todos los estados</option>
+      <option value="Activo">Activo</option>
+      <option value="En seguimiento">En seguimiento</option>
+      <option value="Inactivo">Inactivo</option>
+    </select>
+    <div class="spacer"></div>
+    <span class="count" id="resultCount"></span>
+  </section>
+
+  <section class="table-card">
+     <div id="tableArea"><div class="loading"><div class="spinner"></div>Conectando con Supabase…</div></div>
+  </section>
+
+ 
+</div>
+
+<!-- Modal: nuevo / editar cliente -->
+<div class="overlay" id="formOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="formTitle">Nuevo cliente</h2>
+      <button class="modal-close" id="formClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <form id="clientForm">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full">
+            <label>Nombre y Apellido</label>
+            <input type="text" id="f_nombreApellido" required maxlength="80" placeholder="Ej. Lucía Gómez" />
+            <span class="err-msg">Ingresá el nombre y apellido.</span>
+          </div>
+
+          <div class="field">
+            <label>Fecha de nacimiento</label>
+            <input type="date" id="f_nacimiento" />
+            <div class="age-readout" id="ageReadout">Edad: —</div>
+          </div>
+          <div class="field">
+            <label>Género</label>
+            <select id="f_genero">
+              <option value="">Sin especificar</option>
+              <option>Femenino</option>
+              <option>Masculino</option>
+              <option>Otro</option>
+              <option>Prefiere no decir</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Localidad</label>
+            <input type="text" id="f_localidad" list="localidadOptions" placeholder="Ej. Villa del Rosario" />
+            <datalist id="localidadOptions"></datalist>
+          </div>
+          <div class="field">
+            <label>Teléfono / WhatsApp</label>
+            <input type="tel" id="f_telefono" required placeholder="+54 9 3573  XXXXXX" />
+            <span class="err-msg">Ingresá un teléfono de contacto.</span>
+          </div>
+
+          <div class="field full">
+            <label>Correo electrónico <span class="opt">(opcional)</span></label>
+            <input type="email" id="f_correo" placeholder="nombre@correo.com" />
+          </div>
+
+          <div class="field">
+            <label>Fecha última compra</label>
+            <input type="date" id="f_ultimaCompra" />
+          </div>
+          <div class="field">
+            <label>Monto gastado</label>
+            <input type="number" id="f_monto" min="0" step="100" placeholder="0" />
+          </div>
+
+          <div class="field full">
+            <label>Producto comprado</label>
+            <input type="text" id="f_producto" placeholder="Ej. Zapatillas running" />
+          </div>
+
+          <div class="field">
+            <label>Frecuencia de compra</label>
+            <select id="f_frecuencia">
+              <option value="">Sin especificar</option>
+              <option>Semanal</option>
+              <option>Quincenal</option>
+              <option>Mensual</option>
+              <option>Bimestral</option>
+              <option>Trimestral</option>
+              <option>Ocasional</option>
+              <option>Primera compra</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Canal de contacto</label>
+            <select id="f_canal">
+              <option value="">Sin especificar</option>
+              <option>WhatsApp</option>
+              <option>Instagram</option>
+              <option>Facebook</option>
+              <option>Email</option>
+              <option>Teléfono</option>
+              <option>Presencial</option>
+            </select>
+          </div>
+
+          <div class="field full">
+            <label>Observaciones <span class="opt">(opcional)</span></label>
+            <textarea id="f_observaciones" maxlength="300" placeholder="Notas internas sobre este cliente…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="form-error" id="formError"></span>
+        <div class="foot-right">
+          <button class="btn btn-ghost" type="button" id="formCancel">Cancelar</button>
+          <button class="btn btn-primary" type="submit" id="formSubmitBtn">Guardar cliente</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: gestionar compras del cliente -->
+<div class="overlay" id="purchasesOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="purchasesTitle">Compras de cliente</h2>
+      <button class="modal-close" id="purchasesClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="purchasesList"></div>
+      <button class="btn btn-primary" type="button" id="btnAddPurchase" style="margin-top: 14px; width: 100%;">+ Agregar compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: agregar/editar compra -->
+<div class="overlay" id="purchaseFormOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="purchaseFormTitle">Nueva compra</h2>
+      <button class="modal-close" id="purchaseFormClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <form id="purchaseForm">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full">
+            <label>Producto</label>
+            <input type="text" id="pf_producto" required maxlength="120" placeholder="Ej. Zapatillas running" />
+            <span class="err-msg">Ingresá el producto.</span>
+          </div>
+          <div class="field">
+            <label>Fecha</label>
+            <input type="date" id="pf_fecha" required />
+            <span class="err-msg">Ingresá la fecha.</span>
+          </div>
+          <div class="field">
+            <label>Monto (ARS)</label>
+            <input type="number" id="pf_monto" required min="0" step="100" placeholder="0" />
+            <span class="err-msg">Ingresá el monto.</span>
+          </div>
+          <div class="field full">
+            <label>Observaciones <span class="opt">(opcional)</span></label>
+            <textarea id="pf_observaciones" maxlength="200" placeholder="Notas sobre esta compra…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="form-error" id="purchaseFormError"></span>
+        <div class="foot-right">
+          <button class="btn btn-ghost" type="button" id="purchaseFormCancel">Cancelar</button>
+          <button class="btn btn-primary" type="submit" id="purchaseFormSubmitBtn">Guardar compra</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: confirmar eliminación de compra -->
+<div class="overlay" id="deletePurchaseOverlay">
+  <div class="modal small">
+    <div class="modal-head">
+      <h2>Eliminar compra</h2>
+      <button class="modal-close" id="deletePurchaseClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text">¿Eliminar esta compra? Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-foot" style="justify-content:flex-end;">
+      <button class="btn btn-ghost" type="button" id="deletePurchaseCancel">Cancelar</button>
+      <button class="btn btn-danger" type="button" id="deletePurchaseConfirm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar eliminación -->
+<div class="overlay" id="deleteOverlay">
+  <div class="modal small">
+    <div class="modal-head">
+      <h2>Eliminar cliente</h2>
+      <button class="modal-close" id="deleteClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text">¿Eliminar a <b id="deleteName"></b> de la base de clientes? Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-foot" style="justify-content:flex-end;">
+      <button class="btn btn-ghost" type="button" id="deleteCancel">Cancelar</button>
+      <button class="btn btn-danger" type="button" id="deleteConfirm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Resumen Semanal -->
+<div class="overlay" id="weeklyReportOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Resumen de Ventas Semanal</h2>
+      <button class="modal-close" id="weeklyReportClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px;">
+      <div id="weeklyReportContent" style="min-height:200px;">
+        <div class="loading"><div class="spinner"></div>Cargando datos...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
+
+</body>
+</html>
