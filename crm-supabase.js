@@ -1,8 +1,8 @@
 /* ==========================================================================
  * CRM – Conexión a Supabase
  * ========================================================================== */
-const SUPABASE_URL = "https://rmnnbaokdpxsylnhxtkd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Tfv-sV9YuqRVMH5exKKQIw_bY8N7CFT";
+const SUPABASE_URL = "https://mdzhmkavrruiaacohspn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_NcVRaPwfSKvTdw9WZcJzEw_YA3iQ3b1";
 const SUPABASE_TABLE = "clientes";
 
 let supabaseClient = null;
